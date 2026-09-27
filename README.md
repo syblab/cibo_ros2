@@ -516,6 +516,9 @@ Image Compression
 - [ROS2 image transport for ffmpeg/libav](https://docs.ros.org/en/jazzy/p/ffmpeg_image_transport/doc/readme_include.html)
 - [ROS 2のffmpeg_image_transportパッケージを使って効率よく画像トピックを配信、購読する](https://qiita.com/dandelion1124/items/deed014872624fd9a50c)
 
+YOLO
+- [YOLO-Worldモデル](https://docs.ultralytics.com/ja/models/yolo-world)
+
 supervision
 - [supervision](https://supervision.roboflow.com/latest/)
 

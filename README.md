@@ -252,7 +252,8 @@ ros2 bag play <Pathを入力する>
 
 1. rosbag2データを再生する
 ```bash
-ros2 bag play rosbag2_2026_09_15-xx_xx_xx/
+ros2 bag play $HOME/ros2_ws/rosbag/rosbag2_2026_08_25-17_37_46/
+# rosbag path はご自身の環境に合わせて変更してください
 ```
 2. 圧縮画像を解凍する
 ```bash

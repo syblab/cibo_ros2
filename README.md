@@ -476,8 +476,8 @@ ros2 run cibo_ros2 imshow.py
 
 ## 📚 Reference
 ROS2
-- [ROS 2-Humble](https://docs.ros.org/en/humble/index.html)
-- [ROS 2 Installation](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)
+- [ROS 2-Jazzy](https://docs.ros.org/en/jazzy/index.html)
+- [ROS 2 Installation](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)
 
 Mediapipe Face Mesh
 - [MediaPipe](https://chuoling.github.io/mediapipe/)

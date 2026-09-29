@@ -8,6 +8,10 @@
 ## 📦 Feature
 Eating Behavior Recognition for Elderly People.
 
+### Node & Topic
+![node_topic](./media/cibo_all.png)
+
+## 🛠️ Setup
 <details>
 
 <summary>🛠️ Setup</summary>
@@ -68,7 +72,7 @@ source install/setup.bash
 
 </details>
 
-
+## 🎮 How to use
 <details>
 
 <summary>🎮 How to use</summary>
@@ -246,6 +250,8 @@ ros2 bag play <Pathを入力する>
 
 </details>
 
+
+## rosbag2
 <details>
 
 <summary>rosbag2</summary>

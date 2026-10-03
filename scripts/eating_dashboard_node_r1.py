@@ -168,7 +168,10 @@ class FoodItemStats:
         self.vol_buffer: Deque[float] = deque(maxlen=VOL_BUFFER_LEN)
         self.current_avg_vol_ml = 0.0
         self.current_weight_g = 0.0
-        self.initial_weight_g: Optional[float] = None  # 初回インタラクション直前のグラム数 (100%基準)
+        
+        # 初回操作直前のグラム数を固定保持するフィールド
+        self.initial_weight_g: Optional[float] = None
+        
         self.is_interacting = False
         self.pre_interaction_vol_ml = 0.0
         self.settling_start_time = 0.0
@@ -184,14 +187,18 @@ class FoodItemStats:
             self.current_avg_vol_ml = sum(self.vol_buffer) / len(self.vol_buffer)
             self.current_weight_g = self.current_avg_vol_ml * density
 
+    def set_baseline_before_interaction(self):
+        """手に取られる（操作される）直前の重量を基準として1度だけ永久固定"""
+        if self.initial_weight_g is None and self.current_weight_g > 0:
+            self.initial_weight_g = self.current_weight_g
+
     @property
     def eaten_percentage(self) -> float:
-        """手の接触直前の重量を 100% とした時の現在の摂取率 (%)"""
+        """基準重量に対する現在の摂取率（%）を算出"""
         if self.initial_weight_g is None or self.initial_weight_g <= 0:
             return 0.0
-        consumed_g = self.initial_weight_g - self.current_weight_g
-        pct = (consumed_g / self.initial_weight_g) * 100.0
-        return float(np.clip(pct, 0.0, 100.0))
+        ratio = 1.0 - (self.current_weight_g / self.initial_weight_g)
+        return float(np.clip(ratio * 100.0, 0.0, 100.0))
 
     def record_bite(self, chews: int):
         self.bites_count += 1
@@ -230,7 +237,7 @@ def assign_rule_based_labels(color_image: np.ndarray, dets_food: sv.Detections) 
         areas.append(area)
         class_names.append(det_class)
 
-    # 1. 主食 (staple food)
+    # 1. 主食 (staple food) の判定
     staple_idx = -1
     for idx in unassigned:
         if class_names[idx] == "bowl of white rice":
@@ -244,7 +251,7 @@ def assign_rule_based_labels(color_image: np.ndarray, dets_food: sv.Detections) 
         assigned[staple_idx] = "staple food"
         unassigned.remove(staple_idx)
 
-    # 2. 汁物 (soup)
+    # 2. 汁物 (soup) の判定
     soup_idx = -1
     if staple_idx != -1:
         staple_cx, staple_cy = centers[staple_idx]
@@ -262,13 +269,13 @@ def assign_rule_based_labels(color_image: np.ndarray, dets_food: sv.Detections) 
         assigned[soup_idx] = "soup"
         unassigned.remove(soup_idx)
 
-    # 3. 主菜 (main dish)
+    # 3. 主菜 (main dish) の判定
     if unassigned:
         main_idx = max(unassigned, key=lambda idx: areas[idx])
         assigned[main_idx] = "main dish"
         unassigned.remove(main_idx)
 
-    # 4. 副菜 (side dish 1, side dish 2)
+    # 4. 副菜 (side dish 1, side dish 2) の判定
     if unassigned:
         unassigned.sort(key=lambda idx: centers[idx][0])
         side_count = 1
@@ -491,14 +498,12 @@ class IntegratedEatingDashboardNode(Node):
                 st.last_seen = time.time()
                 is_overlapped = (label in interacting_labels)
 
-                # 手・カトラリーが料理と接触開始する直前のグラム数を記録（初接触時）
                 if is_overlapped and not st.is_interacting:
+                    # 手やカトラリーが料理に触れる直前のグラム数を基準値として永久固定
+                    st.set_baseline_before_interaction()
                     st.is_interacting = True
                     st.waiting_for_settle = False
                     st.pre_interaction_vol_ml = st.current_avg_vol_ml
-                    if st.initial_weight_g is None:
-                        # まだ測定値がない場合は、現在の計算量（または初期100g基準）を初期グラム数として保持
-                        st.initial_weight_g = st.current_weight_g if st.current_weight_g > 0 else 100.0
 
                 elif not is_overlapped and st.is_interacting:
                     st.is_interacting = False
@@ -576,18 +581,21 @@ class IntegratedEatingDashboardNode(Node):
         cv2.putText(panel, "FOOD CONSUMPTION TRACKING", (15, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
 
         y_offset = 175
+        # 常に固定の5項目を順序通りループして描画
         for label in FIXED_FOOD_LABELS:
             item = self.food_db.get(label, FoodItemStats(label))
             is_active = (label == self.last_accessed_food)
             bg_color = (60, 60, 20) if is_active else (45, 45, 45)
             text_color = (0, 255, 255) if is_active else (220, 220, 220)
 
+            # パネル枠描画
             cv2.rectangle(panel, (10, y_offset - 15), (panel_w - 10, y_offset + 38), bg_color, -1)
             cv2.rectangle(panel, (10, y_offset - 15), (panel_w - 10, y_offset + 38), (80, 80, 80), 1)
 
             cv2.putText(panel, f"[{label.upper()}]", (15, y_offset + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1)
-            # Rem: XXg から Eaten: XX% に表示を変更
-            cv2.putText(panel, f"Eaten: {item.eaten_percentage:.0f}%", (240, y_offset + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (180, 255, 180), 1)
+            
+            # Rem: XXg から Eaten: XX% に表示変更
+            cv2.putText(panel, f"Eaten: {item.eaten_percentage:.0f}%", (260, y_offset + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (180, 255, 180), 1)
 
             chew_info = f"Bites: {item.bites_count}  |  Avg Chew: {item.avg_chews:.1f} / bite"
             cv2.putText(panel, chew_info, (20, y_offset + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (200, 200, 200), 1)
